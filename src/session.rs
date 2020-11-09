@@ -798,7 +798,8 @@ impl SessionInner {
             .saturating_sub(self.next_outgoing_id);
 
         trace!(
-            "Session received credit {:?}. window: {}, pending: {}",
+            "Session({}) received credit {:?}. window: {}, pending: {}",
+            self.remote_channel_id,
             flow.link_credit(),
             self.remote_outgoing_window,
             self.pending_transfers.len()

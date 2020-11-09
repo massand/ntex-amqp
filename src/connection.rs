@@ -68,6 +68,8 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Connection<T> {
         remote: Configuration,
         time: Option<LowResTimeService>,
     ) -> Connection<T> {
+        //println!("LOCAL =========== {:#?}", local);
+        //println!("REMOTE =========== {:#?}", remote);
         Connection {
             framed,
             hb: Heartbeat::new(
@@ -412,28 +414,28 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Future for Connection<T> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // connection heartbeat
-        match self.hb.poll(cx) {
-            Ok(act) => match act {
-                HeartbeatAction::None => (),
-                HeartbeatAction::Close => {
-                    trace!("Headerbeat expired");
-                    self.inner.get_mut().set_error(AmqpTransportError::Timeout);
-                    return Poll::Ready(Ok(()));
-                }
-                HeartbeatAction::Heartbeat => {
-                    trace!("Sending hb frame");
-                    self.inner
-                        .get_mut()
-                        .write_queue
-                        .push_back(AmqpFrame::new(0, Frame::Empty));
-                }
-            },
-            Err(e) => {
-                trace!("Headerbeat error: {:?}", e);
-                self.inner.get_mut().set_error(e);
-                return Poll::Ready(Ok(()));
-            }
-        }
+        // match self.hb.poll(cx) {
+        //     Ok(act) => match act {
+        //         HeartbeatAction::None => (),
+        //         HeartbeatAction::Close => {
+        //             trace!("Headerbeat expired");
+        //             self.inner.get_mut().set_error(AmqpTransportError::Timeout);
+        //             return Poll::Ready(Ok(()));
+        //         }
+        //         HeartbeatAction::Heartbeat => {
+        //             trace!("Sending hb frame");
+        //             self.inner
+        //                 .get_mut()
+        //                 .write_queue
+        //                 .push_back(AmqpFrame::new(0, Frame::Empty));
+        //         }
+        //     },
+        //     Err(e) => {
+        //         trace!("Headerbeat error: {:?}", e);
+        //         self.inner.get_mut().set_error(e);
+        //         return Poll::Ready(Ok(()));
+        //     }
+        // }
 
         loop {
             match self.poll_incoming(cx) {
@@ -576,9 +578,11 @@ impl ConnectionInner {
 
     fn complete_session_creation(&mut self, channel_id: u16, begin: &Begin) {
         trace!(
-            "Session opened: local {:?} remote {:?}",
+            "Session opened: local {} remote {:?}, in-window: {}, out-window: {}",
             channel_id,
-            begin.remote_channel()
+            begin.remote_channel(),
+            begin.incoming_window(),
+            begin.outgoing_window(),
         );
 
         let id = begin.remote_channel().unwrap() as usize;
