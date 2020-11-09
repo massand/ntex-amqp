@@ -68,18 +68,15 @@ impl Heartbeat {
         }
     }
 
-    pub(crate) fn poll(
-        &mut self,
-        cx: &mut Context<'_>,
-    ) -> Result<HeartbeatAction, AmqpTransportError> {
+    pub(crate) fn poll(&mut self, cx: &mut Context<'_>) -> Result<HeartbeatAction, AmqpTransportError> {
         match Pin::new(&mut self.delay).poll(cx) {
             Poll::Ready(_) => {
                 let mut act = HeartbeatAction::None;
                 let dl = self.delay.deadline();
-                if dl >= self.expire_local + self.local {
-                    // close connection
-                    return Ok(HeartbeatAction::Close);
-                }
+                // if dl >= self.expire_local + self.local {
+                //     // close connection
+                //     return Ok(HeartbeatAction::Close);
+                // }
                 if let Some(remote) = self.remote {
                     if dl >= self.expire_remote + remote {
                         // send heartbeat

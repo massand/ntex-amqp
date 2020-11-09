@@ -414,28 +414,28 @@ impl<T: AsyncRead + AsyncWrite + Unpin> Future for Connection<T> {
 
     fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         // connection heartbeat
-        // match self.hb.poll(cx) {
-        //     Ok(act) => match act {
-        //         HeartbeatAction::None => (),
-        //         HeartbeatAction::Close => {
-        //             trace!("Headerbeat expired");
-        //             self.inner.get_mut().set_error(AmqpTransportError::Timeout);
-        //             return Poll::Ready(Ok(()));
-        //         }
-        //         HeartbeatAction::Heartbeat => {
-        //             trace!("Sending hb frame");
-        //             self.inner
-        //                 .get_mut()
-        //                 .write_queue
-        //                 .push_back(AmqpFrame::new(0, Frame::Empty));
-        //         }
-        //     },
-        //     Err(e) => {
-        //         trace!("Headerbeat error: {:?}", e);
-        //         self.inner.get_mut().set_error(e);
-        //         return Poll::Ready(Ok(()));
-        //     }
-        // }
+        match self.hb.poll(cx) {
+            Ok(act) => match act {
+                HeartbeatAction::None => (),
+                HeartbeatAction::Close => {
+                    trace!("Headerbeat expired");
+                    self.inner.get_mut().set_error(AmqpTransportError::Timeout);
+                    return Poll::Ready(Ok(()));
+                }
+                HeartbeatAction::Heartbeat => {
+                    trace!("Sending hb frame");
+                    self.inner
+                        .get_mut()
+                        .write_queue
+                        .push_back(AmqpFrame::new(0, Frame::Empty));
+                }
+            },
+            Err(e) => {
+                trace!("Headerbeat error: {:?}", e);
+                self.inner.get_mut().set_error(e);
+                return Poll::Ready(Ok(()));
+            }
+        }
 
         loop {
             match self.poll_incoming(cx) {
